@@ -8,7 +8,7 @@
 *.dylib
 obj
 CMakeLists.txt.user
-sample/run-lua
+test/run-lua
 
 # Created by https://www.gitignore.io/api/cmake
 
