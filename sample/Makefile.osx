@@ -1,0 +1,9 @@
+TARGET = run-lua
+
+default: test
+
+build:
+	clang -O3 -o $(TARGET) main.m -L/usr/local/lib -llua -I/usr/local/include -framework CoreFoundation
+
+test: build
+	$(TARGET) test.lua
