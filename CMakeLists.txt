@@ -3,7 +3,7 @@ set(TARGET_NAME superpowered)
 
 # set source files
 set(CPP_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
-set(CPP_FILES ${CPP_SOURCE_DIR}/lua_superpowered_player_osx.mm
+set(CPP_FILES ${CPP_SOURCE_DIR}/lua_superpowered_player_apple.mm
     ${CPP_SOURCE_DIR}/lua_superpowered.cpp
     ${CPP_SOURCE_DIR}/lua_superpowered_player.cpp
     ${CPP_SOURCE_DIR}/Superpowered/SuperpoweredOSXAudioIO.mm
