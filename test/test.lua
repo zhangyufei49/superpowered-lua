@@ -28,6 +28,6 @@ end)
 print("----------------| play |----------------")
 p:open("./test.mp3")
 p:play()
-p:set_tempo(1.2, true)
+p:set_tempo(2.0)
 
 --p:release()

@@ -15,7 +15,7 @@ set_target_properties(${TARGET_NAME} PROPERTIES
     SUFFIX ".so")
 
 # config compile args
-set(CMAKE_CXX_FLAGS "-std=c++11 -O3")
+set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -Wall")
 include_directories(
     /usr/local/include
     )
