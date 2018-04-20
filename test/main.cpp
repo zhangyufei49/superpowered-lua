@@ -1,13 +1,12 @@
-#import <CoreFoundation/CoreFoundation.h>
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
-#include <lua/lua.h>
-#include <lua/lauxlib.h>
-#include <lua/lualib.h>
+#include <lua.hpp>
+
+volatile bool isTermed = false;
 
 static void handle_signal(int sig) {
-    CFRunLoopStop(CFRunLoopGetMain());
+    isTermed = true;
 }
 
 int main(int argc, const char * argv[]) {
@@ -24,7 +23,11 @@ int main(int argc, const char * argv[]) {
     }
     signal(SIGTERM, handle_signal);
     signal(SIGINT, handle_signal);
-    CFRunLoopRun();
+
+    while (!isTermed) {
+        sleep(1);
+    }
+
     lua_close(l);
     return 0;
 }

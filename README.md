@@ -4,9 +4,6 @@ A luabinding project for [superpowered](https://github.com/superpoweredSDK/Low-L
 
 ## Build
 
-### OSX
-
-OSX uses CMake to build.
 You should install lua and CMake first.
 Then set your paths to CMakeLists.txt. Default use lua5.3 and '/usr/local' as install directory.
 
@@ -28,18 +25,9 @@ TODO
 
 ## Run test project
 
-Only has OSX test project.
+OSX/Linux test project.
 
 ```bash
 cd test
-make -f Makefile.osx
+make
 ```
-
-If build failed you can use the prebuild **run-lua** to testing.
-
-```bash
-cd test
-./run-lua-prebuild ./test.lua
-```
-
-
