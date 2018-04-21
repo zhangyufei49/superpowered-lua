@@ -28,6 +28,7 @@ int main(int argc, const char * argv[]) {
         sleep(1);
     }
 
+    luaL_dostring(l, "onExit()");
     lua_close(l);
     return 0;
 }
