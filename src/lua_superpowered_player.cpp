@@ -114,6 +114,7 @@ static int player_release(lua_State* l) {
     LuaPlayer* p = check_lua_player_argc(l, __func__, 1);
     if (p) {
         superpowered_player_release(p->player);
+        p->player = nullptr;
         release_lua_player(p);
     }
 

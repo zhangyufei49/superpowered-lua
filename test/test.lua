@@ -29,5 +29,18 @@ print("----------------| play |----------------")
 p:open("./test.mp3")
 p:play()
 p:set_tempo(2.0)
-
 --p:release()
+
+
+local p2 = player.create(function(p, e, data)
+    print(string.format("player2 %s receive event: [%d] and data [%s]", tostring(p), e, tostring(data)))
+    if e == player.Event_LoadSuccess then
+        print("duration (sec): ", p:duration() / 1000)
+    end
+end)
+
+p2:open("./test.mp3");
+p2:play()
+p2:seek(10000);
+p2:set_tempo(1.0)
+--p2:release()
