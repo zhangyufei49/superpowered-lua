@@ -13,9 +13,11 @@
 
 //#define DEBUGTHISFILE
 #ifdef DEBUGTHISFILE
-#define LOGD(...)   do{printf(__VA_ARGS__); printf("\n");} while(0)
+#define LOGD(...)   do{printf("******"); printf(__VA_ARGS__); printf("\n");} while(0)
+#define LOGDF(...)  do{printf("######%s:", __func__); printf(__VA_ARGS__); printf("\n");} while(0)
 #else
 #define LOGD(...)   ((void)0)
+#define LOGDF(...)  ((void)0)
 #endif
 
 #define SAMPLERATE 48000
@@ -28,6 +30,7 @@ struct AlsaPCMContext {
     snd_pcm_t *handle;
     float *buffer;
     struct pollfd *ufds;
+    float volume = 1.0f;
 };
 
 static void destroyContext(AlsaPCMContext *context) {
@@ -43,6 +46,10 @@ public:
     AudioPlayerContext(AlsaPCMContext* alsaPCMContext, std::thread* thread, bool* threadRuning)
     :alsaPCMContext(alsaPCMContext), thread(thread), threadRuning(threadRuning) {}
 
+    AlsaPCMContext* getAlsaPCMContex() {
+        return alsaPCMContext;
+    }
+
     void destory() {
         destoryThread();
 
@@ -50,6 +57,10 @@ public:
         delete alsaPCMContext;
         alsaPCMContext = nullptr;
     }
+
+    SuperpoweredAdvancedAudioPlayerCallback callback;
+    bool pauseWhenEOF = false;
+    bool exitLoop = false;
 
 private:
     inline void destoryThread() {
@@ -67,6 +78,7 @@ private:
 };
 
 static std::map<void*, AudioPlayerContext> playerContextMap;
+static std::map<void*, void*> udataPlayerMap;
 
 static bool underrunRecovery(snd_pcm_t *pcmHandle, int error) {
     if (error == -EPIPE) {
@@ -329,7 +341,9 @@ static bool initAlsa(SuperpoweredAdvancedAudioPlayer* player) {
 
             float *buf = context->buffer;
             for (int n = 0; n < numTurns; n++) {
-                if (!player->process(buf, false, numSamples)) memset(buf, 0, numSamples * 8);
+                if (!player->process(buf, false, numSamples, context->volume)) {
+                    memset(buf, 0, numSamples * 8);
+                }
                 buf += numSamples * 2;
             }
 
@@ -374,16 +388,36 @@ static bool initAlsa(SuperpoweredAdvancedAudioPlayer* player) {
     return true;
 }
 
+static void playerEventCallback(void* clientData, SuperpoweredAdvancedAudioPlayerEvent event, void* value) {
+    LOGDF("clientData:%p, player:%p, event:%d", clientData, udataPlayerMap.at(clientData), event);
+
+    AudioPlayerContext& context = playerContextMap.at(udataPlayerMap.at(clientData));
+
+    switch (event) {
+        case SuperpoweredAdvancedAudioPlayerEvent_EOF:
+            *((bool*)value) = context.pauseWhenEOF;
+            break;
+        case SuperpoweredAdvancedAudioPlayerEvent_LoopEnd:
+            *((bool*)value) = context.exitLoop;
+            break;
+        default:
+            break;
+    }
+
+    context.callback(clientData, event, value);
+}
 
 void* superpowered_player_create(superpower_player_event_callback callback, void* udata) {
-    auto player = new SuperpoweredAdvancedAudioPlayer(udata, (SuperpoweredAdvancedAudioPlayerCallback)callback, SAMPLERATE, 0);
-    LOGD("new player:%p", player);
+    auto player = new SuperpoweredAdvancedAudioPlayer(udata, playerEventCallback, SAMPLERATE, 0);
+    LOGDF("new player:%p, udata:%p", player, udata);
 
     if (!initAlsa(player)) {
         perror("init alsa error!");
         exit(-1);
     }
 
+    udataPlayerMap[udata] = player;
+    playerContextMap.at(player).callback = (SuperpoweredAdvancedAudioPlayerCallback)callback;
     return player;
 }
 
@@ -401,18 +435,17 @@ void* superpowered_player_get(void* player) {
 }
 
 float superpowered_player_volume(void* player) {
-    // todo:
-    return 1.0;
+    return playerContextMap.at(player).getAlsaPCMContex()->volume;
 }
 
 void superpowered_player_set_volume(void* player, float volume) {
-    // todo:
+    playerContextMap.at(player).getAlsaPCMContex()->volume = volume;
 }
 
 void superpowered_player_set_exit_loop(void* player, int exit) {
-    // todo:
+    playerContextMap.at(player).exitLoop = static_cast<bool>(exit);
 }
 
 void superpowered_player_set_pause_when_eof(void* player, int pause) {
-    // todo:
+    playerContextMap.at(player).pauseWhenEOF = static_cast<bool>(pause);
 }

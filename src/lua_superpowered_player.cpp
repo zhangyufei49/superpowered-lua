@@ -21,8 +21,8 @@
     }} while(0)
 
 typedef struct {
-    void* player;
-    lua_State* l;
+    void* player = nullptr;
+    lua_State* l = nullptr;
 } LuaPlayer;
 
 static LuaPlayer* create_lua_player(lua_State* l) {
@@ -297,7 +297,7 @@ static int player_set_volume(lua_State* l) {
 }
 
 static int player_set_exit_loop(lua_State* l) {
-    LuaPlayer* p = check_lua_player_argc(l, __func__, 3);
+    LuaPlayer* p = check_lua_player_argc(l, __func__, 2);
 
     // check argv 2 is boolean
     CHECK_ARG_IS_STH(l, 2, boolean);
@@ -311,7 +311,7 @@ static int player_set_exit_loop(lua_State* l) {
 }
 
 static int player_set_pause_when_eof(lua_State* l) {
-    LuaPlayer* p = check_lua_player_argc(l, __func__, 3);
+    LuaPlayer* p = check_lua_player_argc(l, __func__, 2);
 
     // check argv 2 is boolean
     CHECK_ARG_IS_STH(l, 2, boolean);
