@@ -18,10 +18,15 @@ if(APPLE)
             ${CPP_SOURCE_DIR}/osx
             ${CPP_SOURCE_DIR}/Superpowered
             )
-elseif(UNIX)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(CPP_FILES ${CPP_SOURCE_DIR}/platform/linux/lua_superpowered_player_linux.cpp
             ${CPP_SOURCE_DIR}/lua_superpowered.cpp
             ${CPP_SOURCE_DIR}/lua_superpowered_player.cpp
+            )
+    include_directories(${CPP_SOURCE_DIR}
+            ${CPP_SOURCE_DIR}/platform
+            ${CPP_SOURCE_DIR}/linux
+            ${CPP_SOURCE_DIR}/Superpowered
             )
 endif()
 
@@ -55,11 +60,11 @@ if(APPLE)
             ${AVFOUNDATION_LIBRARY}
             ${AUDIOTOOLBOX_LIBRARY}
             )
-elseif(UNIX)
-    message("platform is unix now!")
+elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    message("platform is linux now!")
     find_library(LUA_LIBRARY lua)
     find_library(SUPERPOWERED_LIBRARY libSuperpoweredLinuxX86_64.a ${CMAKE_SOURCE_DIR}/lib)
-    find_library(ALSASOUND_LIBRARY asound.so)
+    find_library(ALSASOUND_LIBRARY asound)
     target_link_libraries(${TARGET_NAME}
             ${LUA_LIBRARY}
             ${SUPERPOWERED_LIBRARY}

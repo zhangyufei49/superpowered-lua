@@ -1,3 +1,7 @@
+/*
+ * todo: Linux平台当前没有按照设计
+ */
+
 #include "lua_superpowered_player.h"
 #include "Superpowered/SuperpoweredAdvancedAudioPlayer.h"
 #include <map>
@@ -448,4 +452,11 @@ void superpowered_player_set_exit_loop(void* player, int exit) {
 
 void superpowered_player_set_pause_when_eof(void* player, int pause) {
     playerContextMap.at(player).pauseWhenEOF = static_cast<bool>(pause);
+}
+
+void superpowered_player_open(void* player, const char* filePath) {
+    LOGD("superpowered_player_open:player=%p, path=%s", player, filePath);
+
+    // 打开绝对路径
+    ((SuperpoweredAdvancedAudioPlayer*)player)->open(filePath);
 }
