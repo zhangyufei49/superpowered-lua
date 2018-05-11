@@ -5,13 +5,21 @@ set(TARGET_NAME superpowered)
 set(CPP_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 
 if(APPLE)
-    set(CPP_FILES ${CPP_SOURCE_DIR}/lua_superpowered_player_apple.mm
-        ${CPP_SOURCE_DIR}/lua_superpowered.cpp
-        ${CPP_SOURCE_DIR}/lua_superpowered_player.cpp
-        ${CPP_SOURCE_DIR}/Superpowered/SuperpoweredOSXAudioIO.mm
-        )
+    set(CPP_FILES ${CPP_SOURCE_DIR}/platform/lua_superpowered_player_common.cpp
+            ${CPP_SOURCE_DIR}/platform/SpPlayerBase.cpp
+            ${CPP_SOURCE_DIR}/platform/osx/SpPlayer.mm
+            ${CPP_SOURCE_DIR}/platform/osx/lua_superpowered_player_osx.cpp
+            ${CPP_SOURCE_DIR}/lua_superpowered.cpp
+            ${CPP_SOURCE_DIR}/lua_superpowered_player.cpp
+            ${CPP_SOURCE_DIR}/Superpowered/SuperpoweredOSXAudioIO.mm
+            )
+    include_directories(${CPP_SOURCE_DIR}
+            ${CPP_SOURCE_DIR}/platform
+            ${CPP_SOURCE_DIR}/osx
+            ${CPP_SOURCE_DIR}/Superpowered
+            )
 elseif(UNIX)
-    set(CPP_FILES ${CPP_SOURCE_DIR}/lua_superpowered_player_linux.cpp
+    set(CPP_FILES ${CPP_SOURCE_DIR}/platform/linux/lua_superpowered_player_linux.cpp
             ${CPP_SOURCE_DIR}/lua_superpowered.cpp
             ${CPP_SOURCE_DIR}/lua_superpowered_player.cpp
             )

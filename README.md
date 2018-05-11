@@ -2,6 +2,12 @@
 
 A luabinding project for [superpowered](https://github.com/superpoweredSDK/Low-Latency-Android-Audio-iOS-Audio-Engine.git)
 
+## Support Platform:
+* Android
+* iOS
+* OSX
+* Linux
+
 ## Build
 
 You should install lua and CMake first.
@@ -17,17 +23,14 @@ make install
 
 Then you can goto the **Run test project** theme.
 
-### Android
-TODO
-
-### iOS
-TODO
-
 ## Run test project
 
-OSX/Linux test project.
+OSX/Linux test project:
 
 ```bash
 cd test
 make
 ```
+
+
+There is no test project about Android or iOS for now.

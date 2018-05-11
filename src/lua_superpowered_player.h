@@ -9,6 +9,11 @@ extern "C" {
 
 SUPERPOWERED_EXPORT int superpowered_register_player_module(lua_State* l);
 
+typedef struct {
+    void* player = nullptr;
+    lua_State* l = nullptr;
+} LuaPlayer;
+
 typedef void (*superpower_player_event_callback)(void* udata, int event, void* value);
 /**
  * @brief Should init the player object in diff platform then return it
@@ -44,6 +49,11 @@ SUPERPOWERED_EXPORT void superpowered_player_set_exit_loop(void* player, int exi
  * @param pause 1 pause player when event eof happen
  */
 SUPERPOWERED_EXPORT void superpowered_player_set_pause_when_eof(void* player, int pause);
+
+/**
+ * @param open file
+ */
+SUPERPOWERED_EXPORT void superpowered_player_open(void* player, const char* filePath);
 
 #ifdef __cplusplus
 } /* end extern C */

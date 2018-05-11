@@ -28,7 +28,7 @@ end)
 print("----------------| play |----------------")
 p:open("./test.mp3")
 p:play()
-p:set_tempo(2.0)
+p:setTempo(2.0)
 
 
 local p2 = player.create(function(p, e, data)
@@ -41,7 +41,7 @@ end)
 p2:open("./test.mp3")
 p2:play()
 p2:seek(10000)
-p2:set_tempo(1.0)
+p2:setTempo(1.0)
 
 function onExit()
     print("enter onExit")

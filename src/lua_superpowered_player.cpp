@@ -1,5 +1,6 @@
 #include "lua_superpowered_player.h"
 #include "Superpowered/SuperpoweredAdvancedAudioPlayer.h"
+#include "mylog.h"
 
 #define SUPERPOWERED_PLAYER_CALLBACKS "superpowered_player_callbacks"
 #define LOG_ID "superpowered_player"
@@ -11,7 +12,7 @@
 
 #define CHECK_ARG_IS_STH(_lua_state_, _n_, _type_)                                                                   \
     do{ if (!lua_is##_type_(_lua_state_, _n_)) {                                                                     \
-        fprintf(stderr, "[%s] invalid argument when call %s, argv %d need a %s.\n", LOG_ID, __func__, _n_, #_type_); \
+        LOGD("[%s] invalid argument when call %s, argv %d need a %s", LOG_ID, __func__, _n_, #_type_); \
         return 0;                                                                                                    \
     }} while(0)
 
@@ -20,10 +21,25 @@
         CHECK_ARG_IS_STH(_lua_state_, _n_, _type_);                                                                  \
     }} while(0)
 
-typedef struct {
-    void* player = nullptr;
-    lua_State* l = nullptr;
-} LuaPlayer;
+#if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
+/* Compatibility for Lua 5.1.
+ *
+ * luaL_setfuncs() is used to create a module table where the functions have
+ * json_config_t as their first upvalue. Code borrowed from Lua 5.2 source. */
+static void luaL_setfuncs (lua_State *l, const luaL_Reg *reg, int nup)
+{
+    int i;
+
+    luaL_checkstack(l, nup, "too many upvalues");
+    for (; reg->name != NULL; reg++) {  /* fill the table with given functions */
+        for (i = 0; i < nup; i++)  /* copy upvalues to the top */
+            lua_pushvalue(l, -nup);
+        lua_pushcclosure(l, reg->func, nup);  /* closure with those upvalues */
+        lua_setfield(l, -(nup + 2), reg->name);
+    }
+    lua_pop(l, nup);  /* remove upvalues */
+}
+#endif
 
 static LuaPlayer* create_lua_player(lua_State* l) {
     LuaPlayer* p = new LuaPlayer;
@@ -53,6 +69,7 @@ static void release_lua_player(LuaPlayer* p) {
 }
 
 static void player_event_callback(void* udata, SuperpoweredAdvancedAudioPlayerEvent event, void* value) {
+    LOGD("%s:udata:%p, event:%d", __func__, udata, event);
     LuaPlayer* p = static_cast<LuaPlayer*>(udata);
     lua_State* l = p->l;
 
@@ -83,7 +100,7 @@ static void player_event_callback(void* udata, SuperpoweredAdvancedAudioPlayerEv
 static LuaPlayer* check_lua_player_argc(lua_State* l, const char* funcname, int needargc) {
     int argc = lua_gettop(l);
     if (argc < needargc) {
-        fprintf(stderr, "[%s] invalid argument when call %s, and it needs %d arguments\n", LOG_ID, funcname, needargc);
+        LOGD("[%s] invalid argument when call %s, and it needs %d arguments", LOG_ID, funcname, needargc);
         return NULL;
     }
 
@@ -94,7 +111,7 @@ static int player_create(lua_State* l) {
     // check arg
     int argc = lua_gettop(l);
     if (argc != 1 || !lua_isfunction(l, 1)) {
-        fprintf(stderr, "[%s] %s need a event callback argument\n", LOG_ID, __func__);
+        LOGD("[%s] %s need a event callback argument", LOG_ID, __func__);
         return 0;
     }
 
@@ -190,7 +207,7 @@ static int player_open(lua_State* l) {
     if (p) {
         GET_SPPLAYER_FROM_LUA_PLAYER(player, p);
         const char* path = lua_tostring(l, 2);
-        player->open(path);
+        superpowered_player_open(p->player, path);
     }
     return 0;
 }
@@ -198,9 +215,13 @@ static int player_open(lua_State* l) {
 static int player_play(lua_State* l) {
     LuaPlayer* p = check_lua_player_argc(l, __func__, 1);
 
+    // check argv 2 is boolean
+    CHECK_ARG_IS_STH_IGNIL(l, 2, boolean);
+
     if (p) {
         GET_SPPLAYER_FROM_LUA_PLAYER(player, p);
-        player->play(false);
+        bool synchronised = lua_isnoneornil(l, 2) ? false : lua_toboolean(l, 2);
+        player->play(synchronised);
     }
 
     return 0;
@@ -339,10 +360,10 @@ static void create_player_meta_table(lua_State* l) {
                             {"pause", player_pause},
                             {"seek", player_seek},
                             {"loop", player_loop},
-                            {"set_tempo", player_set_tempo},
-                            {"set_volume", player_set_volume},
-                            {"set_exit_loop", player_set_exit_loop},
-                            {"set_pause_when_eof", player_set_pause_when_eof},
+                            {"setTempo", player_set_tempo},
+                            {"setVolume", player_set_volume},
+                            {"setExitLoop", player_set_exit_loop},
+                            {"setPauseWhenEOF", player_set_pause_when_eof},
                             {NULL, NULL}};
 
     luaL_newmetatable(l, SUPERPOWERED_PLAYER_METATABLE);
