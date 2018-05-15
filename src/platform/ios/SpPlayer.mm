@@ -37,10 +37,10 @@
 
 static AudioIODelegate* delegate = [AudioIODelegate new];
 
-static const unsigned int samplerate = 44100;      // 在iOS平台 使用其他采样率会有问题
+static const unsigned int SAMPLERATE = 44100;      // 在iOS平台 使用其他采样率会有问题
 
 SpPlayer::SpPlayer(void* udata, superpower_player_event_callback callback)
-        :SpPlayerBase(udata, callback, samplerate) {
+        :SpPlayerBase(udata, callback, SAMPLERATE) {
     LOGD("SpPlayer::SpPlayer udata=%p", udata);
 
     if (posix_memalign((void **)&stereoBuffer, 16, 4096 + 128) != 0) abort();   // Allocating memory, aligned to 16.
@@ -49,13 +49,19 @@ SpPlayer::SpPlayer(void* udata, superpower_player_event_callback callback)
     auto audioProcessing = [](void *self,  float **buffers, unsigned int inputChannels, unsigned int outputChannels, unsigned int numberOfSamples, unsigned int samplerate, uint64_t hostTime) {
         auto spPlayer = (SpPlayer*)self;
 
+        if (spPlayer->samplerate != samplerate) {
+            LOGD("Samplerate from %u change to %u", spPlayer->samplerate, samplerate);
+            spPlayer->samplerate = samplerate;
+            spPlayer->audioPlayer->setSamplerate(samplerate);
+        };
+
         bool hasAudio = spPlayer->audioPlayer->process(spPlayer->stereoBuffer, false, numberOfSamples, spPlayer->volume);
         if (hasAudio) SuperpoweredDeInterleave(spPlayer->stereoBuffer, buffers[0], buffers[1], numberOfSamples);
         return hasAudio;
     };
 
     SuperpoweredIOSAudioIO* iosAudioIO = [[SuperpoweredIOSAudioIO alloc] initWithDelegate:delegate preferredBufferSize:12
-                                                    preferredMinimumSamplerate:samplerate
+                                                    preferredMinimumSamplerate:SAMPLERATE
                                                           audioSessionCategory:AVAudioSessionCategoryPlayback
                                                                       channels:2
                                                        audioProcessingCallback:audioProcessing

@@ -10,7 +10,7 @@
 
 class SpPlayer : public SpPlayerBase {
 public:
-    explicit SpPlayer(void* udata, superpower_player_event_callback callback);
+    SpPlayer(void* udata, superpower_player_event_callback callback);
     ~SpPlayer();
 
 private:

@@ -12,7 +12,7 @@
 #endif
 
 SpPlayerBase::SpPlayerBase(void* udata, superpower_player_event_callback callback, unsigned int samplerate)
-        :udata(udata), eventCallback(callback) {
+        :udata(udata), eventCallback(callback), samplerate(samplerate) {
     LOGD("SpPlayerBase::SpPlayerBase this=%p", this);
 
     audioPlayer = new SuperpoweredAdvancedAudioPlayer(udata, [](void *clientData, SuperpoweredAdvancedAudioPlayerEvent event, void *value) {

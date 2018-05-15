@@ -23,21 +23,27 @@
                 numberOfSamples:(unsigned int)numberOfSamples
                      samplerate:(unsigned int)samplerate
                        hostTime:(UInt64)hostTime {
-    bool silence = !_spPlayer->audioPlayer->process(_spPlayer->stereoBuffer, false, numberOfSamples, _spPlayer->volume);
+    if (_spPlayer->samplerate != samplerate) {
+        LOGD("Samplerate from %u change to %u", _spPlayer->samplerate, samplerate);
+        _spPlayer->samplerate = samplerate;
+        _spPlayer->audioPlayer->setSamplerate(samplerate);
+    };
 
-    if (!silence) {
+    bool hasAudio = _spPlayer->audioPlayer->process(_spPlayer->stereoBuffer, false, numberOfSamples, _spPlayer->volume);
+
+    if (hasAudio) {
         SuperpoweredDeInterleave(_spPlayer->stereoBuffer, outputBuffers[0], outputBuffers[1], numberOfSamples);
     }
-    return !silence;
+    return hasAudio;
 }
 
 @end
 
 
-static const unsigned int samplerate = 44100;      // 在iOS平台 使用其他采样率会有问题
+static const unsigned int SAMPLERATE = 44100;
 
 SpPlayer::SpPlayer(void* udata, superpower_player_event_callback callback)
-        :SpPlayerBase(udata, callback, samplerate) {
+        :SpPlayerBase(udata, callback, SAMPLERATE) {
     LOGD("SpPlayer::SpPlayer udata=%p", udata);
 
     if (posix_memalign((void **)&stereoBuffer, 16, 4096 + 128) != 0) abort();   // Allocating memory, aligned to 16.

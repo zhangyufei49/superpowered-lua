@@ -23,7 +23,8 @@ public:
 public:
     SuperpoweredAdvancedAudioPlayer* audioPlayer   = nullptr;
     superpower_player_event_callback eventCallback = nullptr;
-    void* udata         = nullptr;
+    void* udata             = nullptr;
+    unsigned int samplerate = 0;
 
     float volume        = 1.0f;
     bool  exitLoop      = false;
