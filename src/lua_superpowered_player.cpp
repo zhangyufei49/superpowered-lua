@@ -1,5 +1,6 @@
 #include "lua_superpowered_player.h"
 #include "Superpowered/SuperpoweredAdvancedAudioPlayer.h"
+#include "mylog.h"
 
 #define SUPERPOWERED_PLAYER_CALLBACKS "superpowered_player_callbacks"
 #define LOG_ID "superpowered_player"
@@ -10,15 +11,35 @@
         static_cast<SuperpoweredAdvancedAudioPlayer*>(superpowered_player_get(_lua_player_->player))
 
 #define CHECK_ARG_IS_STH(_lua_state_, _n_, _type_)                                                                   \
-    if (!lua_is##_type_(l, _n_)) {                                                                                   \
-        fprintf(stderr, "[%s] invalid argument when call %s, argv %d need a %s.\n", LOG_ID, __func__, _n_, #_type_); \
+    do{ if (!lua_is##_type_(_lua_state_, _n_)) {                                                                     \
+        LOGD("[%s] invalid argument when call %s, argv %d need a %s", LOG_ID, __func__, _n_, #_type_); \
         return 0;                                                                                                    \
-    }
+    }} while(0)
 
-typedef struct {
-    void* player;
-    lua_State* l;
-} LuaPlayer;
+#define CHECK_ARG_IS_STH_IGNIL(_lua_state_, _n_, _type_)                                                             \
+    do{ if (!lua_isnoneornil(_lua_state_, _n_)) {                                                                    \
+        CHECK_ARG_IS_STH(_lua_state_, _n_, _type_);                                                                  \
+    }} while(0)
+
+#if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
+/* Compatibility for Lua 5.1.
+ *
+ * luaL_setfuncs() is used to create a module table where the functions have
+ * json_config_t as their first upvalue. Code borrowed from Lua 5.2 source. */
+static void luaL_setfuncs (lua_State *l, const luaL_Reg *reg, int nup)
+{
+    int i;
+
+    luaL_checkstack(l, nup, "too many upvalues");
+    for (; reg->name != NULL; reg++) {  /* fill the table with given functions */
+        for (i = 0; i < nup; i++)  /* copy upvalues to the top */
+            lua_pushvalue(l, -nup);
+        lua_pushcclosure(l, reg->func, nup);  /* closure with those upvalues */
+        lua_setfield(l, -(nup + 2), reg->name);
+    }
+    lua_pop(l, nup);  /* remove upvalues */
+}
+#endif
 
 static LuaPlayer* create_lua_player(lua_State* l) {
     LuaPlayer* p = new LuaPlayer;
@@ -48,6 +69,7 @@ static void release_lua_player(LuaPlayer* p) {
 }
 
 static void player_event_callback(void* udata, SuperpoweredAdvancedAudioPlayerEvent event, void* value) {
+    LOGD("%s:udata:%p, event:%d", __func__, udata, event);
     LuaPlayer* p = static_cast<LuaPlayer*>(udata);
     lua_State* l = p->l;
 
@@ -77,8 +99,8 @@ static void player_event_callback(void* udata, SuperpoweredAdvancedAudioPlayerEv
 
 static LuaPlayer* check_lua_player_argc(lua_State* l, const char* funcname, int needargc) {
     int argc = lua_gettop(l);
-    if (argc != needargc) {
-        fprintf(stderr, "[%s] invalid argument when call %s, and it needs %d arguments\n", LOG_ID, funcname, needargc);
+    if (argc < needargc) {
+        LOGD("[%s] invalid argument when call %s, and it needs %d arguments", LOG_ID, funcname, needargc);
         return NULL;
     }
 
@@ -89,7 +111,7 @@ static int player_create(lua_State* l) {
     // check arg
     int argc = lua_gettop(l);
     if (argc != 1 || !lua_isfunction(l, 1)) {
-        fprintf(stderr, "[%s] %s need a event callback argument\n", LOG_ID, __func__);
+        LOGD("[%s] %s need a event callback argument", LOG_ID, __func__);
         return 0;
     }
 
@@ -109,6 +131,7 @@ static int player_release(lua_State* l) {
     LuaPlayer* p = check_lua_player_argc(l, __func__, 1);
     if (p) {
         superpowered_player_release(p->player);
+        p->player = nullptr;
         release_lua_player(p);
     }
 
@@ -179,12 +202,12 @@ static int player_open(lua_State* l) {
     LuaPlayer* p = check_lua_player_argc(l, __func__, 2);
 
     // check argv 2 is string
-    CHECK_ARG_IS_STH(l, 2, string)
+    CHECK_ARG_IS_STH(l, 2, string);
 
     if (p) {
         GET_SPPLAYER_FROM_LUA_PLAYER(player, p);
         const char* path = lua_tostring(l, 2);
-        player->open(path);
+        superpowered_player_open(p->player, path);
     }
     return 0;
 }
@@ -192,9 +215,13 @@ static int player_open(lua_State* l) {
 static int player_play(lua_State* l) {
     LuaPlayer* p = check_lua_player_argc(l, __func__, 1);
 
+    // check argv 2 is boolean
+    CHECK_ARG_IS_STH_IGNIL(l, 2, boolean);
+
     if (p) {
         GET_SPPLAYER_FROM_LUA_PLAYER(player, p);
-        player->play(false);
+        bool synchronised = lua_isnoneornil(l, 2) ? false : lua_toboolean(l, 2);
+        player->play(synchronised);
     }
 
     return 0;
@@ -212,40 +239,42 @@ static int player_pause(lua_State* l) {
 }
 
 static int player_seek(lua_State* l) {
-    LuaPlayer* p = check_lua_player_argc(l, __func__, 3);
+    LuaPlayer* p = check_lua_player_argc(l, __func__, 2);
 
     // check argv 2 is number
-    CHECK_ARG_IS_STH(l, 2, number)
+    CHECK_ARG_IS_STH(l, 2, number);
     // check argv 3 is boolean
-    CHECK_ARG_IS_STH(l, 3, boolean)
+    CHECK_ARG_IS_STH_IGNIL(l, 3, boolean);
+    // check argv 4 is boolean
+    CHECK_ARG_IS_STH_IGNIL(l, 4, boolean);
 
     if (p) {
         GET_SPPLAYER_FROM_LUA_PLAYER(player, p);
         lua_Number pos = lua_tonumber(l, 2);
-        bool stop      = lua_toboolean(l, 3) ? true : false;
-        // FIXME(zhangyufei): 参数3 我没搞明白。这里暂时用 false
-        player->setPosition(pos, stop, false);
+        bool stop      = lua_isnoneornil(l, 3) ? false : lua_toboolean(l, 3);
+        bool syncStart = lua_isnoneornil(l, 4) ? true : lua_toboolean(l, 4);
+        player->setPosition(pos, stop, syncStart, true);
     }
 
     return 0;
 }
 
 static int player_loop(lua_State* l) {
-    LuaPlayer* p = check_lua_player_argc(l, __func__, 4);
+    LuaPlayer* p = check_lua_player_argc(l, __func__, 3);
 
     // check argv 2 is number
-    CHECK_ARG_IS_STH(l, 2, number)
+    CHECK_ARG_IS_STH(l, 2, number);
     // check argv 3 is number
-    CHECK_ARG_IS_STH(l, 3, number)
+    CHECK_ARG_IS_STH(l, 3, number);
     // check argv 4 is boolean
-    CHECK_ARG_IS_STH(l, 4, boolean)
+    CHECK_ARG_IS_STH_IGNIL(l, 4, boolean);
 
     if (p) {
         GET_SPPLAYER_FROM_LUA_PLAYER(player, p);
         lua_Number start = lua_tonumber(l, 2);
         lua_Number len   = lua_tonumber(l, 3);
-        bool jump        = lua_toboolean(l, 3) ? true : false;
-        bool ret = player->loop(start, len, jump, 255, false);
+        bool jump        = lua_isnoneornil(l, 4) ? true : lua_toboolean(l, 4);
+        bool ret = player->loop(start, len, jump, 255, true);
         lua_pushboolean(l, ret ? 1 : 0);
         return 1;
     }
@@ -254,20 +283,20 @@ static int player_loop(lua_State* l) {
 
 /**
  * @brief 设置拍速
- * tempo 1.0 表示元素，masterTempo true 变速不变调，false 变调
+ * tempo 1.0 表示元素，masterTempo true 变速不变调，false 变调 默认为 true
  */
 static int player_set_tempo(lua_State* l) {
-    LuaPlayer* p = check_lua_player_argc(l, __func__, 3);
+    LuaPlayer* p = check_lua_player_argc(l, __func__, 2);
 
     // check argv 2 is number
-    CHECK_ARG_IS_STH(l, 2, number)
+    CHECK_ARG_IS_STH(l, 2, number);
     // check argv 3 is boolean
-    CHECK_ARG_IS_STH(l, 3, boolean)
+    CHECK_ARG_IS_STH_IGNIL(l, 3, boolean);
 
     if (p) {
         GET_SPPLAYER_FROM_LUA_PLAYER(player, p);
         lua_Number tempo = lua_tonumber(l, 2);
-        bool mastertempo = lua_toboolean(l, 3) ? true : false;
+        bool mastertempo = lua_isnoneornil(l, 3) ? true : lua_toboolean(l, 3);
         player->setTempo(tempo, mastertempo);
     }
 
@@ -275,10 +304,10 @@ static int player_set_tempo(lua_State* l) {
 }
 
 static int player_set_volume(lua_State* l) {
-    LuaPlayer* p = check_lua_player_argc(l, __func__, 3);
+    LuaPlayer* p = check_lua_player_argc(l, __func__, 2);
 
     // check argv 2 is number
-    CHECK_ARG_IS_STH(l, 2, number)
+    CHECK_ARG_IS_STH(l, 2, number);
 
     if (p) {
         lua_Number volume = lua_tonumber(l, 2);
@@ -289,10 +318,10 @@ static int player_set_volume(lua_State* l) {
 }
 
 static int player_set_exit_loop(lua_State* l) {
-    LuaPlayer* p = check_lua_player_argc(l, __func__, 3);
+    LuaPlayer* p = check_lua_player_argc(l, __func__, 2);
 
     // check argv 2 is boolean
-    CHECK_ARG_IS_STH(l, 2, boolean)
+    CHECK_ARG_IS_STH(l, 2, boolean);
 
     if (p) {
         int exit = lua_toboolean(l, 2);
@@ -303,10 +332,10 @@ static int player_set_exit_loop(lua_State* l) {
 }
 
 static int player_set_pause_when_eof(lua_State* l) {
-    LuaPlayer* p = check_lua_player_argc(l, __func__, 3);
+    LuaPlayer* p = check_lua_player_argc(l, __func__, 2);
 
     // check argv 2 is boolean
-    CHECK_ARG_IS_STH(l, 2, boolean)
+    CHECK_ARG_IS_STH(l, 2, boolean);
 
     if (p) {
         int pause = lua_toboolean(l, 2);
@@ -331,10 +360,10 @@ static void create_player_meta_table(lua_State* l) {
                             {"pause", player_pause},
                             {"seek", player_seek},
                             {"loop", player_loop},
-                            {"set_tempo", player_set_tempo},
-                            {"set_volume", player_set_volume},
-                            {"set_exit_loop", player_set_exit_loop},
-                            {"set_pause_when_eof", player_set_pause_when_eof},
+                            {"setTempo", player_set_tempo},
+                            {"setVolume", player_set_volume},
+                            {"setExitLoop", player_set_exit_loop},
+                            {"setPauseWhenEOF", player_set_pause_when_eof},
                             {NULL, NULL}};
 
     luaL_newmetatable(l, SUPERPOWERED_PLAYER_METATABLE);
